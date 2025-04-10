@@ -4,13 +4,15 @@ import math
 import statistics
 from typing import List
 import unicodedata
+import io
 
 import pypdfium2 as pdfium
 
 from pdftext.pdf.chars import get_chars, deduplicate_chars
 from pdftext.pdf.utils import flatten
 from pdftext.schema import Blocks, Chars, Line, Lines, Pages, Span, Spans
-
+import base64
+from pdftext.schema import Page
 
 def is_math_symbol(char):
     if len(char) != 1:
@@ -257,6 +259,74 @@ def get_blocks(lines: Lines) -> Blocks:
     return merged_blocks
 
 
+def get_page(
+    pdf: bytes,
+    quote_loosebox: bool = True,
+    superscript_height_threshold: float = 0.7,
+    line_distance_threshold: float = 0.1,
+    page_scale: int = 2, 
+) -> Page:
+    page_idx = 0 
+    pdf_doc = pdfium.PdfDocument(pdf)
+    page = None
+    textpage = None
+    img = None
+    bytes_arr = None
+    
+    try:
+        page = pdf_doc.get_page(page_idx)
+        textpage = page.get_textpage()
+
+        page_bbox: List[float] = page.get_bbox()
+        page_width = math.ceil(abs(page_bbox[2] - page_bbox[0]))
+        page_height = math.ceil(abs(page_bbox[1] - page_bbox[3]))
+
+        page_rotation = 0
+        try:
+            page_rotation = page.get_rotation()
+        except:
+            pass
+
+        chars = deduplicate_chars(get_chars(textpage, page_bbox, page_rotation, quote_loosebox))
+        spans = get_spans(chars, superscript_height_threshold=superscript_height_threshold, line_distance_threshold=line_distance_threshold)
+        lines = get_lines(spans)
+        assign_scripts(lines, height_threshold=superscript_height_threshold, line_distance_threshold=line_distance_threshold)
+        blocks = get_blocks(lines)
+
+        ## Adding image
+        img = page.render(scale=page_scale)
+        img = img.to_pil()
+        
+        bytes_arr = io.BytesIO()
+        img.save(bytes_arr, format='PNG')
+        bytes_arr.seek(0)
+        img_base64 = base64.b64encode(bytes_arr.getvalue()).decode('utf-8')
+
+        return {
+            "page": page_idx,
+            "bbox": page_bbox,
+            "width": page_width,
+            "height": page_height,
+            "rotation": page_rotation,
+            "blocks": blocks,
+            "scale": page_scale,
+            "page_image": img_base64
+        }
+    # Return None if there is an error
+    except Exception as e:
+        print(f"Error getting page: {e}")
+        return None
+    finally:
+        # Clean up all resources
+        if bytes_arr:
+            bytes_arr.close()
+        if img:
+            img.close()
+        # PDF document must be closed last
+        if pdf_doc:
+            pdf_doc.close()
+
+
 def get_pages(
     pdf: pdfium.PdfDocument,
     page_range: range,
@@ -264,6 +334,7 @@ def get_pages(
     quote_loosebox: bool =True,
     superscript_height_threshold: float = 0.7,
     line_distance_threshold: float = 0.1,
+    page_scale: int = 2, 
 ) -> Pages:
     pages: Pages = []
 
@@ -291,12 +362,28 @@ def get_pages(
         assign_scripts(lines, height_threshold=superscript_height_threshold, line_distance_threshold=line_distance_threshold)
         blocks = get_blocks(lines)
 
-        pages.append({
-            "page": page_idx,
-            "bbox": page_bbox,
-            "width": page_width,
-            "height": page_height,
-            "rotation": page_rotation,
-            "blocks": blocks
-        })
+        ## Adding image
+        img = page.render(scale=page_scale)
+        img = img.to_pil()
+
+        bytes_arr = io.BytesIO()
+        try:
+            img.save(bytes_arr, format='PNG')
+            bytes_arr.seek(0)
+            img_base64 = base64.b64encode(bytes_arr.getvalue()).decode('utf-8')
+
+            pages.append({
+                "page": page_idx,
+                "bbox": page_bbox,
+                "width": page_width,
+                "height": page_height,
+                "rotation": page_rotation,
+                "blocks": blocks,
+                "scale": page_scale,
+                "page_image": img_base64
+            })
+        finally:
+            bytes_arr.close()
+            img.close()
+
     return pages

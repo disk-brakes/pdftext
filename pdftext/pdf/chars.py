@@ -2,6 +2,7 @@ import math
 
 import pypdfium2 as pdfium
 import pypdfium2.raw as pdfium_c
+from pypdfium2.raw import c_uint
 
 from pdftext.pdf.utils import get_fontname
 from pdftext.schema import Bbox, Char, Chars, Spans, Span
@@ -22,6 +23,11 @@ def get_chars(textpage: pdfium.PdfTextPage, page_bbox: list[float], page_rotatio
 
         char_box = textpage.get_charbox(i, loose=loosebox)
         cx_start, cy_start, cx_end, cy_end = char_box
+
+        font_color = [] 
+        r, g, b, a = c_uint(), c_uint(), c_uint(), c_uint()
+
+        
 
         cx_start -= x_start
         cx_end -= x_start
