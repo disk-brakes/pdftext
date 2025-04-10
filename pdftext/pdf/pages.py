@@ -9,7 +9,7 @@ import io
 import pypdfium2 as pdfium
 
 from pdftext.pdf.chars import get_chars, deduplicate_chars
-from pdftext.pdf.utils import flatten
+from pdftext.pdf.utils import flatten, transform_bbox
 from pdftext.schema import Blocks, Chars, Line, Lines, Pages, Span, Spans
 import base64
 from pdftext.schema import Page
@@ -362,6 +362,51 @@ def get_blocks(lines: Lines) -> Blocks:
 
     return merged_blocks
 
+def get_image_bboxes(
+        page: pdfium.PdfPage,
+        page_bbox: list[float],
+        page_rotation: int
+    ):
+
+    objects = list(page.get_objects())
+
+    text_bboxes = []
+    non_text_objects = []
+
+    for obj in objects:
+        
+        if obj.type in (0, 5):
+            continue
+
+        if obj.type in (2, 3, 4):
+            non_text_objects.append(obj)
+            continue 
+
+        text_bboxes.append(
+            transform_bbox(page_bbox, page_rotation, obj.get_pos())
+        )
+
+    for obj in objects: 
+
+        if obj.type not in (0, 5):
+            continue
+
+        obj_bbox = transform_bbox(page_bbox, page_rotation, obj.get_pos()) 
+
+        # check if the object bbox is intersecting any of the text bboxes
+        flag = any(obj_bbox.intersection_area(text_bbox) > 0 for text_bbox in text_bboxes)
+
+        if not flag: 
+            non_text_objects.append(obj)
+            continue 
+
+    non_text_bboxes = [transform_bbox(page_bbox, page_rotation, obj.get_pos()) for obj in non_text_objects]
+
+    # TODO - Maybe eliminate wrong bboxes
+    # Implement this
+
+    return non_text_bboxes
+
 
 def get_pages(
     pdf: pdfium.PdfDocument,
@@ -412,6 +457,8 @@ def get_pages(
         img = page.render(scale=page_scale)
         img = img.to_pil()
 
+        images = get_image_bboxes(page, page_bbox, page_rotation)
+
         bytes_arr = io.BytesIO()
         try:
             img.save(bytes_arr, format="PNG")
@@ -428,6 +475,7 @@ def get_pages(
                     "blocks": blocks,
                     "scale": page_scale,
                     "page_image": img_base64,
+                    "images": images
                 }
             )
         finally:

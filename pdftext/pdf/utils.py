@@ -1,14 +1,49 @@
 from ctypes import byref, c_int, create_string_buffer
+import math
 from typing import List
 
 import numpy as np
 import pypdfium2 as pdfium
 import pypdfium2.raw as pdfium_c
+from pdftext.schema import Bbox
 
 LINE_BREAKS = ["\n", "\u000D", "\u000A"]
 TABS = ["\t", "\u0009", "\x09"]
 SPACES = [" ", "\ufffe", "\uFEFF", "\xa0"]
 WHITESPACE_CHARS = ["\n", "\r", "\f", "\t", " "]
+
+
+def transform_bbox(
+    page_bbox: list[float],
+    page_rotation: int,
+    bbox: tuple[float, float, float, float],
+) -> Bbox:
+    """
+    Transform pdfium bbox to device bbox
+    """
+    x_start, y_start, x_end, y_end = page_bbox
+
+    page_width = math.ceil(abs(x_end - x_start))
+    page_height = math.ceil(abs(y_end - y_start))
+    
+    cx_start, cy_start, cx_end, cy_end = bbox
+
+    cx_start -= x_start
+    cx_end -= x_start
+    cy_start -= y_start
+    cy_end -= y_start
+
+    ty_start = page_height - cy_start
+    ty_end = page_height - cy_end
+
+    bbox_coords = [
+        min(cx_start, cx_end),
+        min(ty_start, ty_end),
+        max(cx_start, cx_end),
+        max(ty_start, ty_end),
+    ]
+
+    return Bbox(bbox_coords).rotate(page_width, page_height, page_rotation)
 
 
 def flatten(page, flag=pdfium_c.FLAT_NORMALDISPLAY):

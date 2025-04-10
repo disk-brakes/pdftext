@@ -180,6 +180,7 @@ class Page(TypedDict):
     refs: List[Reference]
     scale: int
     page_image: str
+    images: List[Bbox]
 
 
 class TableCell(TypedDict):

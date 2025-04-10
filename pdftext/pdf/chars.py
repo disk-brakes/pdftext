@@ -5,9 +5,8 @@ import pypdfium2 as pdfium
 import pypdfium2.raw as pdfium_c
 from pypdfium2.raw import c_uint
 
-from pdftext.pdf.utils import get_fontname
+from pdftext.pdf.utils import get_fontname, transform_bbox
 from pdftext.schema import Bbox, Char, Chars, Spans, Span
-
 
 def get_chars(
     textpage: pdfium.PdfTextPage,
@@ -28,23 +27,8 @@ def get_chars(
         loosebox = (rotation == 0) and (text != "'" or quote_loosebox)
 
         char_box = textpage.get_charbox(i, loose=loosebox)
-        cx_start, cy_start, cx_end, cy_end = char_box
 
-        cx_start -= x_start
-        cx_end -= x_start
-        cy_start -= y_start
-        cy_end -= y_start
-
-        ty_start = page_height - cy_start
-        ty_end = page_height - cy_end
-
-        bbox_coords = [
-            min(cx_start, cx_end),
-            min(ty_start, ty_end),
-            max(cx_start, cx_end),
-            max(ty_start, ty_end),
-        ]
-        bbox = Bbox(bbox_coords).rotate(page_width, page_height, page_rotation)
+        bbox = transform_bbox(page_bbox, page_rotation, char_box)
 
         fontname, fontflag = get_fontname(textpage, i)
         fontsize = pdfium_c.FPDFText_GetFontSize(textpage, i)
