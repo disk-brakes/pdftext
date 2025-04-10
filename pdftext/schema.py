@@ -69,6 +69,17 @@ class Bbox:
     def overlap_y(self, other: Bbox):
         return max(0, min(self.bbox[3], other.bbox[3]) - max(self.bbox[1], other.bbox[1]))
 
+    def horizontal_distance(self, other: Bbox):
+        x1, y1, x2, y2 = self.bbox
+        i1, j1, i2, j2 = other.bbox
+        
+        if x1 < i1:
+            return i1 - x1
+        elif i2 < x1:
+            return x1 - i2
+
+        return 0
+
     def intersection_area(self, other: Bbox):
         return self.overlap_x(other) * self.overlap_y(other)
 
