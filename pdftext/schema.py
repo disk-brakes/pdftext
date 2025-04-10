@@ -178,6 +178,8 @@ class Page(TypedDict):
     blocks: List[Block]
     rotation: int
     refs: List[Reference]
+    scale: int
+    page_image: str
 
 
 class TableCell(TypedDict):
