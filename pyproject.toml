@@ -36,6 +36,9 @@ pdftext = "pdftext.scripts.extract_text:extract_text_cli"
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+packages = ["pdftext", "pdftext.scripts", "pdftext.pdf"]
+
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-ra -q"
