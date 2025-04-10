@@ -1,3 +1,4 @@
+import ctypes
 import math
 
 import pypdfium2 as pdfium
@@ -8,7 +9,12 @@ from pdftext.pdf.utils import get_fontname
 from pdftext.schema import Bbox, Char, Chars, Spans, Span
 
 
-def get_chars(textpage: pdfium.PdfTextPage, page_bbox: list[float], page_rotation: int, quote_loosebox=True) -> Chars:
+def get_chars(
+    textpage: pdfium.PdfTextPage,
+    page_bbox: list[float],
+    page_rotation: int,
+    quote_loosebox=True,
+) -> Chars:
     chars: Chars = []
 
     x_start, y_start, x_end, y_end = page_bbox
@@ -24,11 +30,6 @@ def get_chars(textpage: pdfium.PdfTextPage, page_bbox: list[float], page_rotatio
         char_box = textpage.get_charbox(i, loose=loosebox)
         cx_start, cy_start, cx_end, cy_end = char_box
 
-        font_color = [] 
-        r, g, b, a = c_uint(), c_uint(), c_uint(), c_uint()
-
-        
-
         cx_start -= x_start
         cx_end -= x_start
         cy_start -= y_start
@@ -37,12 +38,32 @@ def get_chars(textpage: pdfium.PdfTextPage, page_bbox: list[float], page_rotatio
         ty_start = page_height - cy_start
         ty_end = page_height - cy_end
 
-        bbox_coords = [min(cx_start, cx_end), min(ty_start, ty_end), max(cx_start, cx_end), max(ty_start, ty_end)]
+        bbox_coords = [
+            min(cx_start, cx_end),
+            min(ty_start, ty_end),
+            max(cx_start, cx_end),
+            max(ty_start, ty_end),
+        ]
         bbox = Bbox(bbox_coords).rotate(page_width, page_height, page_rotation)
 
         fontname, fontflag = get_fontname(textpage, i)
         fontsize = pdfium_c.FPDFText_GetFontSize(textpage, i)
         fontweight = pdfium_c.FPDFText_GetFontWeight(textpage, i)
+        fontcolor = [c_uint()]*4  # r, g, b, a
+        is_fillcolor = round(
+            pdfium_c.FPDFText_GetFillColor(
+                textpage,
+                i,
+                ctypes.byref(fontcolor[0]),
+                ctypes.byref(fontcolor[1]),
+                ctypes.byref(fontcolor[2]),
+                ctypes.byref(fontcolor[3]),
+            )
+        )
+        if is_fillcolor:
+            fontcolor = [color.value for color in fontcolor]
+        else:
+            fontcolor = []
 
         char_dict: Char = {
             "bbox": bbox,
@@ -51,12 +72,15 @@ def get_chars(textpage: pdfium.PdfTextPage, page_bbox: list[float], page_rotatio
             "font": {
                 "name": fontname,
                 "flags": fontflag,
+                "color": fontcolor,
                 "size": fontsize,
                 "weight": fontweight,
             },
-            "char_idx": i
+            "char_idx": i,
         }
         chars.append(char_dict)
+
+    # TODO: If required, add a deduplication step here through intersection of bboxes
 
     return chars
 
@@ -67,16 +91,18 @@ def deduplicate_chars(chars: Chars) -> Chars:
     word: Span = None
 
     def word_break():
-        words.append({
-            "bbox": char["bbox"],
-            "text": char["char"],
-            "rotation": char["rotation"],
-            "font": char["font"],
-            "char_start_idx": char["char_idx"],
-            "char_end_idx": char["char_idx"],
-            "chars": [char],
-            "url": '',
-        })
+        words.append(
+            {
+                "bbox": char["bbox"],
+                "text": char["char"],
+                "rotation": char["rotation"],
+                "font": char["font"],
+                "char_start_idx": char["char_idx"],
+                "char_end_idx": char["char_idx"],
+                "chars": [char],
+                "url": "",
+            }
+        )
 
     for char in chars:
         if words:
@@ -87,30 +113,33 @@ def deduplicate_chars(chars: Chars) -> Chars:
             continue
 
         # we also break on hyphenation
-        if any(word['text'].endswith(x) for x in ['\n', ' ', '\x02']):
+        if any(word["text"].endswith(x) for x in ["\n", " ", "\x02"]):
             word_break()
             continue
 
         # we break on any change in font info
-        if any(char['font'][k] != word['font'][k] for k in ['name', 'flags', 'size', 'weight']):
+        if any(
+            char["font"][k] != word["font"][k]
+            for k in ["name", "flags", "size", "weight"]
+        ):
             word_break()
             continue
 
-        if char['rotation'] != word['rotation']:
+        if char["rotation"] != word["rotation"]:
             word_break()
             continue
 
-        word['text'] += char['char']
-        word['char_end_idx'] = char['char_idx']
-        word['bbox'] = word['bbox'].merge(char['bbox'])
-        word['chars'].append(char)
+        word["text"] += char["char"]
+        word["char_end_idx"] = char["char_idx"]
+        word["bbox"] = word["bbox"].merge(char["bbox"])
+        word["chars"].append(char)
 
     # deduplicate words
     seen = {}
     deduped = []
     for word in words:
         # Round the bbox coordinates
-        bbox = word['bbox'].bbox
+        bbox = word["bbox"].bbox
         bbox = [round(x, 0) for x in bbox]
 
         key = f"{bbox}-{word['text']}-{word['rotation']}-{word['font']['name']}-{word['font']['flags']}-{word['font']['size']}-{word['font']['weight']}"
@@ -118,4 +147,4 @@ def deduplicate_chars(chars: Chars) -> Chars:
             seen[key] = True
             deduped.append(word)
 
-    return [char for word in deduped for char in word['chars']]
+    return [char for word in deduped for char in word["chars"]]
