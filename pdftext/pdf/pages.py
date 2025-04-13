@@ -9,7 +9,7 @@ import io
 import pypdfium2 as pdfium
 
 from pdftext.pdf.chars import get_chars, deduplicate_chars
-from pdftext.pdf.utils import flatten, transform_bbox
+from pdftext.pdf.utils import flatten, transform_bbox, remove_wrong_bboxes
 from pdftext.schema import Blocks, Chars, Line, Lines, Pages, Span, Spans
 import base64
 from pdftext.schema import Page
@@ -403,7 +403,7 @@ def get_image_bboxes(
     non_text_bboxes = [transform_bbox(page_bbox, page_rotation, obj.get_pos()) for obj in non_text_objects]
 
     # TODO - Maybe eliminate wrong bboxes
-    # Implement this
+    non_text_bboxes = remove_wrong_bboxes(non_text_bboxes, page_bbox, page)
 
     return non_text_bboxes
 

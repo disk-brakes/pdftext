@@ -13,6 +13,80 @@ SPACES = [" ", "\ufffe", "\uFEFF", "\xa0"]
 WHITESPACE_CHARS = ["\n", "\r", "\f", "\t", " "]
 
 
+def get_page_properties(
+        page_bbox: list[float],
+        page: pdfium.PdfPage,
+        rotate: bool = False,
+) -> tuple[float, float, float, float, bool]:
+    
+    x_start, y_start, x_end, y_end = page_bbox
+
+    page_width = math.ceil(abs(x_end - x_start))
+    page_height = math.ceil(abs(y_end - y_start))
+
+    page_rotation = 0
+    try:
+        page_rotation = page.get_rotation()
+    except:
+        pass
+
+
+    # This is done to deliberately use in the situations where we don't want to make this transformation 
+    # Ideally everywhere we compute the page properties, we should use this function 
+    if rotate: 
+        if page_rotation == 90 or page_rotation == 270:
+            page_width, page_height = page_height, page_width
+    
+    mediabox = page.get_mediabox()
+
+    bl_origin = mediabox[0] == 0 and mediabox[1] == 0
+
+    return page_width, page_height, page_rotation, bl_origin
+
+def remove_wrong_bboxes(
+        transformed_bboxes: list[Bbox],
+        page_bbox: list[float],
+        page: pdfium.PdfPage,
+        # page_idx: int,
+) -> list[Bbox]:
+    
+    page_width, page_height, page_rotation, bl_origin = get_page_properties(page_bbox, page, rotate=True)
+
+    # How to get the page position?
+    # TODO - Not sure page.get_pos() is correct - confusing what is the correct position of the page
+    transformed_page_bbox = transform_bbox(page_bbox, page_rotation, page.get_pos())
+
+    correct_bboxes = []
+    for box_objs in transformed_bboxes:
+        if box_objs: 
+            new_pos = [0]*4
+            new_pos = [f(b, p) for f, b, p in zip([max, max, min, min], box_objs, transformed_page_bbox)]
+
+            correct_bboxes.append(tuple(new_pos))
+        else:
+            correct_bboxes.append(None)
+            continue 
+        
+    correct_bboxes = [
+        None if (box_objs is None or (box_objs[0] > box_objs[2]) or (box_objs[1] > box_objs[3])) else box_objs
+        for box_objs in correct_bboxes
+    ]
+
+    correct_bboxes = [
+    box_obj if (
+            box_obj is not None and 
+            box_obj[0] >= transformed_page_bbox[0] and 
+            box_obj[1] >= transformed_page_bbox[1] and 
+            box_obj[2] <= transformed_page_bbox[2] and 
+            box_obj[3] <= transformed_page_bbox[3]
+            ) 
+            else None 
+    for box_obj in correct_bboxes
+    ]
+
+    return correct_bboxes
+    
+
 def transform_bbox(
     page_bbox: list[float],
     page_rotation: int,
