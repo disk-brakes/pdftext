@@ -55,6 +55,14 @@ class Bbox:
     def y_end(self):
         return self.bbox[3]
 
+    def inside(self, other: Bbox):
+        return (
+            self.x_start <= other.x_start and 
+            self.x_end <= other.x_end and 
+            self.y_start >= other.y_start and 
+            self.y_end >= other.y_end
+        )
+
     def merge(self, other: Bbox) -> Bbox:
         x_start = self.x_start if self.x_start < other.x_start else other.x_start
         y_start = self.y_start if self.y_start < other.y_start else other.y_start
@@ -79,6 +87,16 @@ class Bbox:
             return x1 - i2
 
         return 0
+
+    def intersection_score(self, other: Bbox):
+        intersection_area = self.intersection_area(other)
+        if self.area() == 0 or other.area() == 0:
+            if self.inside(other) or other.inside(self):
+                return 1
+            else:
+                return 0
+        else:
+            return intersection_area / min(self.area(), other.area())
 
     def intersection_area(self, other: Bbox):
         return self.overlap_x(other) * self.overlap_y(other)
@@ -180,7 +198,6 @@ class Page(TypedDict):
     refs: List[Reference]
     scale: int
     page_image: str
-    images: List[Bbox]
 
 
 class TableCell(TypedDict):
