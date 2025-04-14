@@ -52,9 +52,8 @@ def remove_wrong_bboxes(
     
     page_width, page_height, page_rotation, bl_origin = get_page_properties(page_bbox, page, rotate=True)
 
-    # How to get the page position?
-    # TODO - Not sure page.get_pos() is correct - confusing what is the correct position of the page
-    transformed_page_bbox = transform_bbox(page_bbox, page_rotation, page.get_pos())
+    # get_pos -> get_bbox. Hopefully correct.
+    transformed_page_bbox = transform_bbox(page_bbox, page_rotation, page.get_bbox())
 
     correct_bboxes = []
     for box_objs in transformed_bboxes:
