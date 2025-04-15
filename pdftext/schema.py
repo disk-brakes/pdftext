@@ -195,9 +195,10 @@ class Page(TypedDict):
     height: int
     blocks: List[Block]
     rotation: int
-    refs: List[Reference]
+    refs: Optional[List[Reference]]
     scale: int
     page_image: str
+    images: List[Bbox]
 
 
 class TableCell(TypedDict):

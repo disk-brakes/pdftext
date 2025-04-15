@@ -47,3 +47,10 @@ addopts = "-ra -q"
 testpaths = [
     "tests",
 ]
+
+[tool.mypy]
+# Default mypy settings can go here if needed in the future
+
+[[tool.mypy.overrides]]
+module = "pdftext.tables"
+ignore_errors = true

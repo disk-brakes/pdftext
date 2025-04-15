@@ -50,7 +50,7 @@ def remove_wrong_bboxes(
         # page_idx: int,
 ) -> List[Optional[Bbox]]:
     
-    page_width, page_height, page_rotation, bl_origin = get_page_properties(page_bbox, page, rotate=True)
+    _, _, page_rotation, _ = get_page_properties(page_bbox, page, rotate=True)
 
     # get_pos -> get_bbox. Hopefully correct.
     transformed_page_bbox = transform_bbox(page_bbox, page_rotation, page.get_bbox())
