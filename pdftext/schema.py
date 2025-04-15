@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, TypedDict, Union
 
 
 class Bbox:
-    def __init__(self, bbox: List[float], ensure_nonzero_area=False):
+    def __init__(self, bbox: List[float], ensure_nonzero_area: bool = False) -> None:
         if ensure_nonzero_area:
             bbox = list(bbox)
             bbox[2] = max(bbox[0], bbox[2] + 1)
@@ -13,47 +13,55 @@ class Bbox:
         self.bbox = bbox
         self.ensure_nonzero_area = ensure_nonzero_area
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: int) -> float:
         return self.bbox[item]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Bbox({self.bbox})"
 
     @property
-    def height(self):
+    def height(self) -> float:
         return self.bbox[3] - self.bbox[1]
 
     @property
-    def width(self):
+    def width(self) -> float:
         return self.bbox[2] - self.bbox[0]
 
     @property
-    def area(self):
+    def area(self) -> float:
         return self.width * self.height
 
     @property
-    def center(self):
+    def center(self) -> List[float]:
         return [(self.bbox[0] + self.bbox[2]) / 2, (self.bbox[1] + self.bbox[3]) / 2]
 
     @property
-    def size(self):
+    def size(self) -> List[float]:
         return [self.width, self.height]
 
     @property
-    def x_start(self):
+    def x_start(self) -> float:
         return self.bbox[0]
 
     @property
-    def y_start(self):
+    def y_start(self) -> float:
         return self.bbox[1]
 
     @property
-    def x_end(self):
+    def x_end(self) -> float:
         return self.bbox[2]
 
     @property
-    def y_end(self):
+    def y_end(self) -> float:
         return self.bbox[3]
+
+    def inside(self, other: Bbox) -> bool:
+        return (
+            self.x_start <= other.x_start and 
+            self.x_end <= other.x_end and 
+            self.y_start >= other.y_start and 
+            self.y_end >= other.y_end
+        )
 
     def merge(self, other: Bbox) -> Bbox:
         x_start = self.x_start if self.x_start < other.x_start else other.x_start
@@ -63,13 +71,13 @@ class Bbox:
 
         return Bbox([x_start, y_start, x_end, y_end])
 
-    def overlap_x(self, other: Bbox):
+    def overlap_x(self, other: Bbox) -> float:
         return max(0, min(self.bbox[2], other.bbox[2]) - max(self.bbox[0], other.bbox[0]))
 
-    def overlap_y(self, other: Bbox):
+    def overlap_y(self, other: Bbox) -> float:
         return max(0, min(self.bbox[3], other.bbox[3]) - max(self.bbox[1], other.bbox[1]))
 
-    def horizontal_distance(self, other: Bbox):
+    def horizontal_distance(self, other: Bbox) -> float:
         x1, y1, x2, y2 = self.bbox
         i1, j1, i2, j2 = other.bbox
         
@@ -80,12 +88,22 @@ class Bbox:
 
         return 0
 
-    def intersection_area(self, other: Bbox):
+    def intersection_score(self, other: Bbox) -> float:
+        intersection_area = self.intersection_area(other)
+        if self.area == 0 or other.area == 0:
+            if self.inside(other) or other.inside(self):
+                return 1.0
+            else:
+                return 0.0
+        else:
+            return intersection_area / min(self.area, other.area)
+
+    def intersection_area(self, other: Bbox) -> float:
         return self.overlap_x(other) * self.overlap_y(other)
 
-    def intersection_pct(self, other: Bbox):
+    def intersection_pct(self, other: Bbox) -> float:
         if self.area == 0:
-            return 0
+            return 0.0
 
         intersection = self.intersection_area(other)
         return intersection / self.area
@@ -115,12 +133,12 @@ class Bbox:
             new_y_max = page_width - x_min
 
         # Ensure that x_min < x_max and y_min < y_max
-        rotated_bbox = (
+        rotated_bbox = [
             min(new_x_min, new_x_max),
             min(new_y_min, new_y_max),
             max(new_x_min, new_x_max),
             max(new_y_min, new_y_max)
-        )
+        ]
 
         return Bbox(rotated_bbox)
 
@@ -178,6 +196,8 @@ class Page(TypedDict):
     blocks: List[Block]
     rotation: int
     refs: List[Reference]
+    scale: int
+    page_image: str
 
 
 class TableCell(TypedDict):
@@ -205,16 +225,16 @@ class Reference:
     coord: List[float]
 
     @property
-    def ref(self):
+    def ref(self) -> str:
         return f"page-{self.page}-{self.idx}"
 
     @property
-    def url(self):
+    def url(self) -> str:
         return f"#{self.ref}"
 
 
 class PageReference:
-    def __init__(self):
+    def __init__(self) -> None:
         self.page_ref_map: Dict[int, List[Reference]] = {}
 
     def get_refs(self, page: int) -> List[Reference]:
