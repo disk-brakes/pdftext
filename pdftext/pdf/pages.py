@@ -159,7 +159,7 @@ def get_spans(
             "superscript": False,
             "subscript": False,
         }
-        spans.append(cast(Span, new_span_dict))
+        spans.append(Span(new_span_dict))
         sum_char_widths = char["bbox"].width
         prev_char_bbox = char["bbox"]
 
@@ -291,8 +291,9 @@ def get_blocks(lines: Lines) -> Blocks:
 
     def block_merge() -> None:
         nonlocal current_block, line
-        current_block["lines"].append(line)
-        current_block["bbox"] = current_block["bbox"].merge(line["bbox"])
+        block: Block = cast(Block, current_block)
+        block["lines"].append(line)
+        block["bbox"] = block["bbox"].merge(line["bbox"])
 
     blocks: Blocks = []
     for line in lines:
@@ -304,7 +305,7 @@ def get_blocks(lines: Lines) -> Blocks:
             )
             continue
 
-        last_line = current_block["lines"][-1]
+        last_line = cast(Block, current_block)["lines"][-1]
         last_bbox = last_line["bbox"]
         current_bbox = line["bbox"]
 
@@ -322,7 +323,7 @@ def get_blocks(lines: Lines) -> Blocks:
         # we make an exception for the first line w.r.t the x diff, because the first line is usually indented
         line_x_indented_start = last_line["bbox"].x_start > line["bbox"].x_start
         if (
-            len(current_block["lines"]) == 1
+            len(cast(Block, current_block)["lines"]) == 1
             and line_x_indented_start
             and y_diff <= allowed_y_gap
         ):
@@ -343,7 +344,7 @@ def get_blocks(lines: Lines) -> Blocks:
             block_merge()
             continue
 
-        if current_block["bbox"].intersection_pct(line["bbox"]) > 0:
+        if cast(Block, current_block)["bbox"].intersection_pct(line["bbox"]) > 0:
             block_merge()
             continue
 

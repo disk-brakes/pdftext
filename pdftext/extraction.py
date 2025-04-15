@@ -87,15 +87,9 @@ def paginated_plain_text_output(pdf_path: str, sort: bool = False, hyphens: bool
 
 
 def _process_span(span: Span, page_width: int, page_height: int, keep_chars: bool) -> None:
-    bbox_value = span["bbox"].bbox
-    span["bbox"] = cast(Bbox, bbox_value)  # Use cast to fix type error
     span["text"] = handle_hyphens(postprocess_text(span["text"]), keep_hyphens=True)
     if not keep_chars:
         del span["chars"]
-    else:
-        for char in span["chars"]:
-            bbox_value = char["bbox"].bbox
-            char["bbox"] = cast(Bbox, bbox_value)  # Use cast to fix type error
 
 
 def dictionary_output(
@@ -121,14 +115,10 @@ def dictionary_output(
             for k in list(block.keys()):
                 if k not in ["lines", "bbox"]:
                     del block[k]
-            bbox_value = block["bbox"].bbox
-            block["bbox"] = cast(Bbox, bbox_value)  # Use cast to fix type error
             for line in block["lines"]:
                 for k in list(line.keys()):
                     if k not in ["spans", "bbox"]:
                         del line[k]
-                bbox_value = line["bbox"].bbox
-                line["bbox"] = cast(Bbox, bbox_value)  # Use cast to fix type error
                 for span in line["spans"]:
                     _process_span(span, page_width, page_height, keep_chars)
 
@@ -140,7 +130,7 @@ def dictionary_output(
             
             # Create a new Bbox instance from the list of floats
             bbox_list = [page["bbox"][2], page["bbox"][3], page["bbox"][0], page["bbox"][1]]
-            page["bbox"] = cast(Bbox, Bbox(bbox_list))
+            page["bbox"] = Bbox(bbox_list)
     return pages
 
 
