@@ -6,7 +6,14 @@ import click
 import pypdfium2 as pdfium
 
 from pdftext.extraction import plain_text_output, dictionary_output
-from pdftext.schema import Pages
+from pdftext.schema import Pages, Bbox
+
+
+# Helper function to serialize Bbox objects for JSON
+def json_serializer(obj: Any) -> Any:
+    if isinstance(obj, Bbox):
+        return obj.bbox
+    raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")
 
 
 def parse_range_str(range_str: str) -> List[int]:
@@ -102,7 +109,10 @@ def extract_text_cli(
             workers=kwargs["workers"],
             disable_links=True
         )
-        output_text = json.dumps(dict_result)
+        # Convert Pydantic model to dict for JSON serialization
+        # output_text = json.dumps(dict_result.model_dump())
+        # Use the custom serializer for Bbox objects
+        output_text = json.dumps(dict_result, default=json_serializer)
     else:
         output_text = plain_text_output(
             str(pdf_path),
