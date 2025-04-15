@@ -1,5 +1,6 @@
 import ctypes
 import math
+from typing import Optional
 
 import pypdfium2 as pdfium
 import pypdfium2.raw as pdfium_c
@@ -12,7 +13,7 @@ def get_chars(
     textpage: pdfium.PdfTextPage,
     page_bbox: list[float],
     page_rotation: int,
-    quote_loosebox=True,
+    quote_loosebox: bool = True,
 ) -> Chars:
     chars: Chars = []
 
@@ -72,19 +73,21 @@ def get_chars(
 def deduplicate_chars(chars: Chars) -> Chars:
     # we first construct words from the chars and then deduplicate them
     words: Spans = []
-    word: Span = None
+    word: Optional[Span] = None
 
-    def word_break():
+    def word_break() -> None:
         words.append(
             {
                 "bbox": char["bbox"],
                 "text": char["char"],
-                "rotation": char["rotation"],
+                "rotation": int(char["rotation"]),
                 "font": char["font"],
                 "char_start_idx": char["char_idx"],
                 "char_end_idx": char["char_idx"],
                 "chars": [char],
                 "url": "",
+                "superscript": False,
+                "subscript": False,
             }
         )
 

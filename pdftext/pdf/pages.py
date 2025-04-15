@@ -410,7 +410,7 @@ def get_image_bboxes(
 
 def get_pages(
     pdf: pdfium.PdfDocument,
-    page_range: range,
+    page_range: list[int],
     flatten_pdf: bool = True,
     quote_loosebox: bool = True,
     superscript_height_threshold: float = 0.7,

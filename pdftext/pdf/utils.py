@@ -1,6 +1,6 @@
 from ctypes import byref, c_int, create_string_buffer
 import math
-from typing import List
+from typing import List, Tuple, Optional
 
 import numpy as np
 import pypdfium2 as pdfium
@@ -17,7 +17,7 @@ def get_page_properties(
         page_bbox: list[float],
         page: pdfium.PdfPage,
         rotate: bool = False,
-) -> tuple[float, float, float, float, bool]:
+) -> Tuple[int, int, int, bool]:
     
     x_start, y_start, x_end, y_end = page_bbox
 
@@ -48,20 +48,23 @@ def remove_wrong_bboxes(
         page_bbox: list[float],
         page: pdfium.PdfPage,
         # page_idx: int,
-) -> list[Bbox]:
+) -> List[Optional[Bbox]]:
     
     page_width, page_height, page_rotation, bl_origin = get_page_properties(page_bbox, page, rotate=True)
 
     # get_pos -> get_bbox. Hopefully correct.
     transformed_page_bbox = transform_bbox(page_bbox, page_rotation, page.get_bbox())
 
-    correct_bboxes = []
+    correct_bboxes: List[Optional[Bbox]] = []
     for box_objs in transformed_bboxes:
         if box_objs: 
-            new_pos = [0]*4
-            new_pos = [f(b, p) for f, b, p in zip([max, max, min, min], box_objs, transformed_page_bbox)]
+            new_pos = [0.0] * 4
+            new_pos[0] = max(box_objs[0], transformed_page_bbox[0])
+            new_pos[1] = max(box_objs[1], transformed_page_bbox[1])
+            new_pos[2] = min(box_objs[2], transformed_page_bbox[2])
+            new_pos[3] = min(box_objs[3], transformed_page_bbox[3])
 
-            correct_bboxes.append(tuple(new_pos))
+            correct_bboxes.append(Bbox(new_pos))
         else:
             correct_bboxes.append(None)
             continue 
@@ -119,13 +122,13 @@ def transform_bbox(
     return Bbox(bbox_coords).rotate(page_width, page_height, page_rotation)
 
 
-def flatten(page, flag=pdfium_c.FLAT_NORMALDISPLAY):
+def flatten(page: pdfium.PdfPage, flag: int = pdfium_c.FLAT_NORMALDISPLAY) -> None:
     rc = pdfium_c.FPDFPage_Flatten(page, flag)
     if rc == pdfium_c.FLATTEN_FAIL:
         raise pdfium.PdfiumError("Failed to flatten annotations / form fields.")
 
 
-def get_fontname(textpage, i):
+def get_fontname(textpage: pdfium.PdfTextPage, i: int) -> Tuple[str, int]:
     font_name_str = ""
     flags = 0
     try:
@@ -150,16 +153,16 @@ def matrix_intersection_area(boxes1: List[List[float]], boxes2: List[List[float]
     if len(boxes1) == 0 or len(boxes2) == 0:
         return np.zeros((len(boxes1), len(boxes2)))
 
-    boxes1 = np.array(boxes1)
-    boxes2 = np.array(boxes2)
+    boxes1_np = np.array(boxes1)
+    boxes2_np = np.array(boxes2)
 
-    boxes1 = boxes1[:, np.newaxis, :]  # Shape: (N, 1, 4)
-    boxes2 = boxes2[np.newaxis, :, :]  # Shape: (1, M, 4)
+    boxes1_np = boxes1_np[:, np.newaxis, :]  # Shape: (N, 1, 4)
+    boxes2_np = boxes2_np[np.newaxis, :, :]  # Shape: (1, M, 4)
 
-    min_x = np.maximum(boxes1[..., 0], boxes2[..., 0])  # Shape: (N, M)
-    min_y = np.maximum(boxes1[..., 1], boxes2[..., 1])
-    max_x = np.minimum(boxes1[..., 2], boxes2[..., 2])
-    max_y = np.minimum(boxes1[..., 3], boxes2[..., 3])
+    min_x = np.maximum(boxes1_np[..., 0], boxes2_np[..., 0])  # Shape: (N, M)
+    min_y = np.maximum(boxes1_np[..., 1], boxes2_np[..., 1])
+    max_x = np.minimum(boxes1_np[..., 2], boxes2_np[..., 2])
+    max_y = np.minimum(boxes1_np[..., 3], boxes2_np[..., 3])
 
     width = np.maximum(0, max_x - min_x)
     height = np.maximum(0, max_y - min_y)
