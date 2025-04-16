@@ -54,3 +54,6 @@ testpaths = [
 [[tool.mypy.overrides]]
 module = "pdftext.tables"
 ignore_errors = true
+
+[project.optional-dependencies]
+dev = ["aiofiles"]
