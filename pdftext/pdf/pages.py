@@ -227,7 +227,8 @@ def get_spans(
         prev_char_bbox = char["bbox"]
         sum_char_widths += char["bbox"].width
 
-    return spans
+    filtered_spans = [span for span in spans if span["text"].strip() != ""]
+    return filtered_spans
 
 
 def get_lines(spans: Spans) -> Lines:
