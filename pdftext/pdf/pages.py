@@ -137,16 +137,16 @@ def assign_scripts(
 
 def get_spans(
     chars: Chars,
+    image_bboxes: list[Bbox],
     superscript_height_threshold: float = 0.8,
     line_distance_threshold: float = 0.1,
 ) -> Spans:
     spans: Spans = []
     avg_char_width: Optional[float] = None
     sum_char_widths = 0.0
-    prev_char_bbox: Optional[Bbox] = None
 
     def span_break() -> None:
-        nonlocal spans, prev_char_bbox, sum_char_widths
+        nonlocal spans, sum_char_widths
         new_span_dict = {
             "bbox": char["bbox"],
             "text": char["char"],
@@ -161,7 +161,6 @@ def get_spans(
         }
         spans.append(Span(new_span_dict))
         sum_char_widths = char["bbox"].width
-        prev_char_bbox = char["bbox"]
 
     for char in chars:
         current_span = spans[-1] if spans else None
@@ -193,22 +192,25 @@ def get_spans(
                     - current_span["bbox"].height * line_distance_threshold
                 ),
                 char["bbox"].y_end
-                < (current_span["bbox"].height * superscript_height_threshold) + current_span["bbox"].y_start,
+                < (current_span["bbox"].height * superscript_height_threshold)
+                + current_span["bbox"].y_start,
                 char["bbox"].x_start > current_span["bbox"].x_end,
             ]
         ):
             span_break()
             continue
 
-        if prev_char_bbox:
-            if current_span["chars"]:
-                avg_char_width = sum_char_widths / len(current_span["chars"])
-                if (
-                    char["bbox"].horizontal_distance(prev_char_bbox)
-                    > 1.5 * avg_char_width
-                ):
-                    span_break()
-                    continue
+        if len(current_span["chars"]) > 0:
+            prev_char_bbox = current_span["chars"][-1]["bbox"]
+            for char_in_current_span in current_span["chars"][::-1]:
+                if char_in_current_span["char"].strip():
+                    prev_char_bbox = char_in_current_span["bbox"]
+                    break
+            avg_char_width = sum_char_widths / len(current_span["chars"])
+            # Used to be 1.5 * avg_char_width reduced it to avg_char_width
+            if char["bbox"].horizontal_distance(prev_char_bbox) > avg_char_width:
+                span_break()
+                continue
 
             if char["bbox"].overlap_y(prev_char_bbox) == 0:
                 span_break()
@@ -220,11 +222,22 @@ def get_spans(
                 span_break()
                 continue
 
+            for image_bbox in image_bboxes:
+                if (
+                    image_bbox.intersection_area(current_span["bbox"]) == 0
+                    and image_bbox.intersection_area(char["bbox"]) == 0
+                    and image_bbox.intersection_area(
+                        current_span["bbox"].merge(char["bbox"])
+                    )
+                    > 0
+                ):
+                    span_break()
+                    continue
+
         current_span["text"] += char["char"]
         current_span["char_end_idx"] = char["char_idx"]
         current_span["bbox"] = current_span["bbox"].merge(char["bbox"])
         current_span["chars"].append(char)
-        prev_char_bbox = char["bbox"]
         sum_char_widths += char["bbox"].width
 
     filtered_spans = [span for span in spans if span["text"].strip() != ""]
@@ -391,9 +404,7 @@ def get_image_bboxes(
             non_text_objects.append(obj)
             continue
 
-        text_bboxes.append(
-            transform_bbox(page_bbox_list, page_rotation, obj.get_pos())
-        )
+        text_bboxes.append(transform_bbox(page_bbox_list, page_rotation, obj.get_pos()))
 
     for obj in objects:
         if obj.type not in (0, 5):
@@ -455,11 +466,14 @@ def get_pages(
         except Exception:
             pass
 
+        image_bboxes = get_image_bboxes(page_obj, page_bbox_list, page_rotation)
+
         chars = deduplicate_chars(
             get_chars(textpage, page_bbox_list, page_rotation, quote_loosebox)
         )
         spans = get_spans(
             chars,
+            image_bboxes,
             superscript_height_threshold=superscript_height_threshold,
             line_distance_threshold=line_distance_threshold,
         )
@@ -470,8 +484,6 @@ def get_pages(
             line_distance_threshold=line_distance_threshold,
         )
         blocks = get_blocks(lines)
-
-        image_bboxes = get_image_bboxes(page_obj, page_bbox_list, page_rotation)
         img_render = page_obj.render(scale=page_scale)
         pil_image = img_render.to_pil()
 

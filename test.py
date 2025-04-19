@@ -135,11 +135,15 @@ def union_bbox(bbox1: Optional[List[float]], bbox2: List[float]) -> List[float]:
 
 
 def visualize_bboxes(
-    page: Dict[str, Any], color: str = "red", crop_flag: bool = True
+    page: Dict[str, Any],
+    text_color: str = "red",
+    image_color: str = "blue",
+    crop_flag: bool = True,
 ) -> Tuple[str, Image.Image]:
     """Draw bounding boxes on the page image and return the encoded image and PIL Image."""
     # Extract all bboxes from the page
-    all_bboxes = []
+    text_bboxes = []
+    image_bboxes = []
 
     blocks = page.get("blocks", [])
     page_image = page.get("page_image", "")
@@ -151,24 +155,36 @@ def visualize_bboxes(
         for line in block.get("lines", []):
             # all_bboxes.append(line.get('bbox', []))
             for span in line.get("spans", []):
-                all_bboxes.append(span.get("bbox", []))
+                text_bboxes.append(span.get("bbox", []))
+
+    images = page.get("images", [])
+    for image in images:
+        image_bboxes.append(image.bbox)
 
     img = preprocess_image(page_image)
     img_bbox = [0, 0, img.size[0], img.size[1]]
 
     # Scale page bboxes to image coordinates
     page_bbox = [0, 0, width, height]
-    scaled_bboxes = [rescale_bbox(page_bbox, img_bbox, bbox) for bbox in all_bboxes]
+    scaled_text_bboxes = [
+        rescale_bbox(page_bbox, img_bbox, bbox) for bbox in text_bboxes
+    ]
+    scaled_image_bboxes = [
+        rescale_bbox(page_bbox, img_bbox, bbox) for bbox in image_bboxes
+    ]
+    all_scaled_bboxes = scaled_text_bboxes + scaled_image_bboxes
 
     # Draw boxes on the image
     draw = ImageDraw.Draw(img)
-    for box in scaled_bboxes:
-        draw.rectangle(box, outline=color, width=1)
+    for box in scaled_text_bboxes:
+        draw.rectangle(box, outline=text_color, width=1)
+    for box in scaled_image_bboxes:
+        draw.rectangle(box, outline=image_color, width=1)
 
-    if crop_flag and scaled_bboxes:
+    if crop_flag and all_scaled_bboxes:
         # Find the union of all bboxes
         missing_boxes_bound = None
-        for box in scaled_bboxes:
+        for box in all_scaled_bboxes:
             missing_boxes_bound = union_bbox(missing_boxes_bound, box)
 
         # Add some padding

@@ -3,6 +3,15 @@ revision = 1
 requires-python = ">=3.10"
 
 [[package]]
+name = "aiofiles"
+version = "24.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/0b/03/a88171e277e8caa88a4c77808c20ebb04ba74cc4681bf1e9416c862de237/aiofiles-24.1.0.tar.gz", hash = "sha256:22a075c9e5a3810f0c2e48f3008c94d68c65d763b9b03857924c99e57355166c", size = 30247 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a5/45/30bb92d442636f570cb5651bc661f52b610e2eec3f891a5dc3a4c3667db0/aiofiles-24.1.0-py3-none-any.whl", hash = "sha256:b4ec55f4195e3eb5d7abd1bf7e061763e864dd4954231fb8539a0ef8bb8260e5", size = 15896 },
+]
+
+[[package]]
 name = "annotated-types"
 version = "0.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -173,6 +182,7 @@ name = "pdftext"
 version = "0.6.2"
 source = { editable = "." }
 dependencies = [
+    { name = "aiofiles" },
     { name = "click" },
     { name = "mypy" },
     { name = "numpy" },
@@ -183,8 +193,15 @@ dependencies = [
     { name = "pytest" },
 ]
 
+[package.optional-dependencies]
+dev = [
+    { name = "aiofiles" },
+]
+
 [package.metadata]
 requires-dist = [
+    { name = "aiofiles", specifier = ">=24.1.0" },
+    { name = "aiofiles", marker = "extra == 'dev'" },
     { name = "click", specifier = ">=8.1.8" },
     { name = "mypy", specifier = ">=1.15.0" },
     { name = "numpy", specifier = ">=2.2.4" },
@@ -194,6 +211,7 @@ requires-dist = [
     { name = "pypdfium2", specifier = "==4.30.0" },
     { name = "pytest", specifier = ">=8.3.5" },
 ]
+provides-extras = ["dev"]
 
 [[package]]
 name = "pillow"
