@@ -56,11 +56,12 @@ class Bbox:
         return self.bbox[3]
 
     def inside(self, other: Bbox) -> bool:
+        # Check if the self bounding box is entirely contained within the other bounding box.
         return (
-            self.x_start <= other.x_start and 
-            self.x_end <= other.x_end and 
-            self.y_start >= other.y_start and 
-            self.y_end >= other.y_end
+            self.x_start >= other.x_start
+            and self.x_end <= other.x_end
+            and self.y_start >= other.y_start
+            and self.y_end <= other.y_end
         )
 
     def merge(self, other: Bbox) -> Bbox:
@@ -72,15 +73,19 @@ class Bbox:
         return Bbox([x_start, y_start, x_end, y_end])
 
     def overlap_x(self, other: Bbox) -> float:
-        return max(0, min(self.bbox[2], other.bbox[2]) - max(self.bbox[0], other.bbox[0]))
+        return max(
+            0, min(self.bbox[2], other.bbox[2]) - max(self.bbox[0], other.bbox[0])
+        )
 
     def overlap_y(self, other: Bbox) -> float:
-        return max(0, min(self.bbox[3], other.bbox[3]) - max(self.bbox[1], other.bbox[1]))
+        return max(
+            0, min(self.bbox[3], other.bbox[3]) - max(self.bbox[1], other.bbox[1])
+        )
 
     def horizontal_distance(self, other: Bbox) -> float:
         x1, y1, x2, y2 = self.bbox
         i1, j1, i2, j2 = other.bbox
-        
+
         if x1 < i1:
             return i1 - x1
         elif i2 < x1:
@@ -137,7 +142,7 @@ class Bbox:
             min(new_x_min, new_x_max),
             min(new_y_min, new_y_max),
             max(new_x_min, new_x_max),
-            max(new_y_min, new_y_max)
+            max(new_y_min, new_y_max),
         ]
 
         return Bbox(rotated_bbox)
@@ -149,7 +154,7 @@ class Bbox:
             self.bbox[0] * w_scale,
             self.bbox[1] * h_scale,
             self.bbox[2] * w_scale,
-            self.bbox[3] * h_scale
+            self.bbox[3] * h_scale,
         ]
 
         return Bbox(new_bbox)
