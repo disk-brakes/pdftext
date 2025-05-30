@@ -56,12 +56,14 @@ class Bbox:
         return self.bbox[3]
 
     def merge(self, other: Bbox) -> Bbox:
-        x_start = self.x_start if self.x_start < other.x_start else other.x_start
-        y_start = self.y_start if self.y_start < other.y_start else other.y_start
-        x_end = self.x_end if self.x_end > other.x_end else other.x_end
-        y_end = self.y_end if self.y_end > other.y_end else other.y_end
-
-        return Bbox([x_start, y_start, x_end, y_end])
+        self_bbox = self.bbox
+        other_bbox = other.bbox
+        return Bbox([
+            min(self_bbox[0], other_bbox[0]),
+            min(self_bbox[1], other_bbox[1]),
+            max(self_bbox[2], other_bbox[2]),
+            max(self_bbox[3], other_bbox[3])
+        ])
 
     def overlap_x(self, other: Bbox):
         return max(0, min(self.bbox[2], other.bbox[2]) - max(self.bbox[0], other.bbox[0]))

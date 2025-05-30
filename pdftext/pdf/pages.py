@@ -132,8 +132,11 @@ def get_spans(chars: Chars, superscript_height_threshold: float = 0.8, line_dist
 def get_lines(spans: Spans) -> Lines:
     lines: Lines = []
     line: Line = None
+    line_text: str = ""
 
     def line_break():
+        global line_text
+        line_text = ""
         lines.append({"spans": [span], "bbox": span["bbox"], "rotation": span["rotation"]})
 
     for span in spans:
@@ -144,8 +147,13 @@ def get_lines(spans: Spans) -> Lines:
             line_break()
             continue
 
-        # we break if the previous span ends with a linebreak or hyphenation
-        if any(line["spans"][-1]["text"].endswith(suffix) for suffix in ["\n", "\x02"]):
+        # we break if the previous span ends with a linebreak, and the line has text
+        if line["spans"][-1]["text"].endswith("\n") and line_text.strip():
+            line_break()
+            continue
+
+        # we break if the current line ends with a hyphen
+        if line["spans"][-1]["text"].endswith("\x02"):
             line_break()
             continue
 
@@ -159,6 +167,7 @@ def get_lines(spans: Spans) -> Lines:
             continue
 
         line["spans"].append(span)
+        line_text += span["text"]
         line["bbox"] = line["bbox"].merge(span["bbox"])
 
     return lines
