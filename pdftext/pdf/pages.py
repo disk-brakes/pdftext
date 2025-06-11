@@ -157,7 +157,7 @@ def get_lines(spans: Spans) -> Lines:
             line_break()
             continue
 
-        if span["rotation"] != line["rotation"]:
+        if span["rotation"] != line["rotation"] and abs(span["rotation"] - line["rotation"]) >= 45:
             line_break()
             continue
 
