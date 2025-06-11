@@ -35,3 +35,10 @@ def test_superscripts(pdf_path):
                     if span["text"] == "∞":
                         assert span["superscript"] is True
                         return True
+
+
+def test_line_joining(pdf_path2):
+    pages = [11]
+    text = plain_text_output(pdf_path2, page_range=pages).lower()
+    assert "the axis media control viewer toolbar" in text
+    assert "axismediacontrolviewertoolbar" not in text

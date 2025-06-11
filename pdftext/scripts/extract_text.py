@@ -52,7 +52,7 @@ def extract_text_cli(
             workers=kwargs["workers"],
             disable_links=True
         )
-        text = json.dumps(text)
+        text = json.dumps(text, ensure_ascii=False, indent=2)
     else:
         text = plain_text_output(
             pdf_path,

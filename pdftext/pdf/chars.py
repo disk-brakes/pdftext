@@ -85,8 +85,10 @@ def deduplicate_chars(chars: Chars) -> Chars:
             word_break()
             continue
 
-        # we break on any change in font info
-        if any(char['font'][k] != word['font'][k] for k in ['name', 'flags', 'size', 'weight']):
+        # we break on any change in font info - optimized comparison
+        char_font = char['font']
+        word_font = word['font']
+        if any(char_font[k] != word_font[k] for k in ['name', 'flags', 'size', 'weight']):
             word_break()
             continue
 
@@ -99,17 +101,19 @@ def deduplicate_chars(chars: Chars) -> Chars:
         word['bbox'] = word['bbox'].merge(char['bbox'])
         word['chars'].append(char)
 
-    # deduplicate words
-    seen = {}
+    # deduplicate words - use tuple keys instead of strings
+    seen = set()
     deduped = []
     for word in words:
         # Round the bbox coordinates
         bbox = word['bbox'].bbox
-        bbox = [round(x, 0) for x in bbox]
+        bbox_rounded = tuple(round(x, 0) for x in bbox)
 
-        key = f"{bbox}-{word['text']}-{word['rotation']}-{word['font']['name']}-{word['font']['flags']}-{word['font']['size']}-{word['font']['weight']}"
+        key = (bbox_rounded, word['text'], word['rotation'], 
+               word['font']['name'], word['font']['flags'], 
+               word['font']['size'], word['font']['weight'])
         if key not in seen:
-            seen[key] = True
+            seen.add(key)
             deduped.append(word)
 
     return [char for word in deduped for char in word['chars']]
