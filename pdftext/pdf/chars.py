@@ -88,10 +88,7 @@ def deduplicate_chars(chars: Chars) -> Chars:
         # we break on any change in font info - optimized comparison
         char_font = char['font']
         word_font = word['font']
-        if (char_font['name'] != word_font['name'] or 
-            char_font['flags'] != word_font['flags'] or 
-            char_font['size'] != word_font['size'] or 
-            char_font['weight'] != word_font['weight']):
+        if any(char_font[k] != word_font[k] for k in ['name', 'flags', 'size', 'weight']):
             word_break()
             continue
 
