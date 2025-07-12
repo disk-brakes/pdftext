@@ -1,6 +1,6 @@
 [project]
 name = "pdftext"
-version = "0.6.2"
+version = "0.6.3"
 description = "Extract structured text from pdfs quickly"
 authors = [
     {name = "Vik Paruchuri", email = "vik.paruchuri@gmail.com"}

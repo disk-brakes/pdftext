@@ -261,14 +261,13 @@ def get_lines(spans: Spans) -> Lines:
             line_break()
             continue
 
-        if any(
-            current_line["spans"][-1]["text"].endswith(suffix)
-            for suffix in ["\n", "\x02"]
-        ):
+        # we break if the previous span ends with a linebreak
+        last_text = line["spans"][-1]["text"]
+        if any(last_text.endswith(suffix) for suffix in ["\n", "\x02"]):
             line_break()
             continue
 
-        if span["rotation"] != current_line["rotation"]:
+        if span["rotation"] != line["rotation"] and abs(span["rotation"] - line["rotation"]) >= 45:
             line_break()
             continue
 
