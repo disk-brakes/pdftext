@@ -1,9 +1,11 @@
 #!/bin/bash
 
+FILE_NAME="deepseek_1"
 # Default values
-INPUT_FILE="./input/reliance_shares.pdf"
-OUTPUT_JSON="./output/reliance_bbox.json"
-VIZ_DIR="./output/bbox_images"
+INPUT_FILE="./input/${FILE_NAME}.pdf"
+OUTPUT_JSON="./output/${FILE_NAME}_bbox.json"
+VIZ_DIR="./output/${FILE_NAME}"
+LOG_FILE="./output/${FILE_NAME}.log"
 VISUALIZE="--visualize"
 
 # Help function
@@ -48,4 +50,4 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Run the parser with the specified or default options
-python3 test.py "$INPUT_FILE" --json --out_path "$OUTPUT_JSON" --viz_output_dir "$VIZ_DIR" $VISUALIZE
+python3 test.py "$INPUT_FILE" --json --out_path "$OUTPUT_JSON" --viz_output_dir "$VIZ_DIR" $VISUALIZE > "$LOG_FILE"
