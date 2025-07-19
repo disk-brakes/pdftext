@@ -139,11 +139,9 @@ def paginated_plain_text_output(
 def _process_span(
     span: Span, page_width: int, page_height: int, keep_chars: bool
 ) -> None:
-    print(f"Span before: {span}")
     span["text"] = handle_hyphens(postprocess_text(span["text"]), keep_hyphens=True)
     if not keep_chars:
         del span["chars"]
-    print(f"Span after: {span}")
 
 def dictionary_output(
     pdf_path: str,
