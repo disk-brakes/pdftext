@@ -23,7 +23,7 @@ def postprocess_text(text: str) -> str:
     for old, new in REPLACEMENTS.items():
         text = text.replace(old, new)
     text = replace_special_chars(text)
-    text = replace_control_chars(text)
+    # text = replace_control_chars(text)
     text = replace_ligatures(text)
     return text
 
